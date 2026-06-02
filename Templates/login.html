@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Student Login | Samyak Computer Classes{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="glass-panel auth-card">
+        <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: var(--color-primary-glow); border-radius: 50%; filter: blur(30px); pointer-events: none; z-index: 1;"></div>
+        <div style="position: absolute; bottom: -50px; left: -50px; width: 150px; height: 150px; background: var(--color-secondary-glow); border-radius: 50%; filter: blur(30px); pointer-events: none; z-index: 1;"></div>
+
+        <div style="position: relative; z-index: 2;">
+            <div class="auth-header">
+                <span style="font-size: 32px; margin-bottom: 12px; display: inline-block;">🔒</span>
+                <h2>Student Login</h2>
+                <p>Enter your credentials to access the examination portal</p>
+            </div>
+
+            {% if error %}
+                <div class="alert-danger">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        id="username" 
+                        class="form-input" 
+                        placeholder="e.g. samyak_std_101" 
+                        required 
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="form-group" style="margin-bottom: 30px;">
+                    <label for="password" class="form-label">Password</label>
+                    <input 
+                        type="password" 
+                        name="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="••••••••••••" 
+                        required 
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px;">
+                    Sign In & Verify Access
+                </button>
+            </form>
+            
+            <div style="margin-top: 24px; text-align: center; font-size: 13px; color: var(--text-muted);">
+                <p>Strict security tracking is active. By logging in, you agree to enable webcam verification and browser fullscreen proctoring.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

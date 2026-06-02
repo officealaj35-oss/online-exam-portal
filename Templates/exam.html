@@ -1,0 +1,511 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Online Exam Portal | Samyak{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<!-- 1. CONSENT LOCK MODAL -->
+<div id="consent-modal" class="fullscreen-alert">
+    <div class="glass-panel alert-card" style="max-width: 600px;">
+        <span style="font-size: 48px; margin-bottom: 20px; display: inline-block;">🖥️</span>
+        <h2>Secure Examination Consent</h2>
+        <p style="margin-top: 10px; text-align: left; font-size: 14px; line-height: 1.6;">
+            To maintain the academic integrity of <strong>Samyak Computer Classes</strong>, this assessment requires a secure proctored environment. Please verify:
+        </p>
+        <ul style="text-align: left; margin: 16px 0 24px 20px; font-size: 14px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+            <li>📷 <strong>Webcam Feed:</strong> Required to verify identity and monitor attempt.</li>
+            <li>🖥️ <strong>Forced Fullscreen:</strong> Prevents access to local files or other applications.</li>
+            <li>🚫 <strong>Tab Monitoring:</strong> Switching tabs or losing focus will trigger proctor warnings.</li>
+            <li>⚠️ <strong>Automatic Submission:</strong> Exceeding 3 proctor violations will submit the exam immediately.</li>
+        </ul>
+        <div style="display: flex; gap: 14px; justify-content: center;">
+            <a href="{% url 'home' %}" class="btn-secondary">Cancel & Exit</a>
+            <button id="start-exam-btn" class="btn-primary">Launch Secure Exam 🚀</button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. VIOLATION WARNING OVERLAY -->
+<div id="warning-modal" class="fullscreen-alert" style="display: none; background: rgba(239, 68, 68, 0.45); backdrop-filter: blur(10px);">
+    <div class="glass-panel alert-card" style="border-color: var(--color-danger); background: #18090b;">
+        <span style="font-size: 56px; display: inline-block;">⚠️</span>
+        <h2>Proctor Violation Warning</h2>
+        <p style="font-size: 16px; margin: 20px 0;">
+            You have exited fullscreen or switched windows. This is a secure assessment.
+        </p>
+        <div class="glass-panel" style="padding: 16px; border-color: rgba(239, 68, 68, 0.2); margin-bottom: 24px; background: rgba(239, 68, 68, 0.05);">
+            <p style="font-size: 14px; color: var(--text-secondary);">Violation Threshold:</p>
+            <h3 style="font-size: 32px; color: var(--color-danger); margin-top: 6px;" id="violations-count">0 / 3 Warnings</h3>
+        </div>
+        <button id="resume-exam-btn" class="btn-primary" style="background: var(--color-danger);">
+            Resume Secure Session & Lock Screen
+        </button>
+    </div>
+</div>
+
+<!-- 3. MAIN DASHBOARD -->
+<div id="exam-dashboard" style="display: none; width: 100%;">
+    {% if no_questions %}
+        <div style="max-width: 600px; margin: 80px auto; text-align: center;" class="glass-panel alert-card">
+            <h2>No Questions Available</h2>
+            <p>Please contact the system administrator to configure exam questions in the Django Admin Panel.</p>
+            <a href="{% url 'home' %}" class="btn-primary">Return Home</a>
+        </div>
+    {% else %}
+        <div class="exam-layout">
+            <div class="exam-main">
+                {% for q in questions %}
+                    <div class="glass-panel question-card" id="q-card-{{ forloop.counter0 }}" style="display: none;">
+                        <div class="question-header">
+                            <span class="question-number" style="font-size: 15px; font-weight: 700;">
+                                QUESTION {{ q.number }} OF {{ questions|length }}
+                            </span>
+                            <span style="background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: var(--text-muted);">
+                                Single Choice (1 Mark)
+                            </span>
+                        </div>
+                        
+                        <p class="question-text">{{ q.question }}</p>
+                        
+                        <div class="options-container">
+                            <div class="option-wrapper">
+                                <input 
+                                    type="radio" 
+                                    name="answer-q-{{ q.id }}" 
+                                    value="option1" 
+                                    class="option-input" 
+                                    data-q-id="{{ q.id }}"
+                                    data-idx="{{ forloop.counter0 }}"
+                                    {% if q.saved_answer == 'option1' %}checked{% endif %}
+                                >
+                                <div class="option-box">
+                                    <div class="option-badge">A</div>
+                                    <span>{{ q.option1 }}</span>
+                                </div>
+                            </div>
+                            <div class="option-wrapper">
+                                <input 
+                                    type="radio" 
+                                    name="answer-q-{{ q.id }}" 
+                                    value="option2" 
+                                    class="option-input" 
+                                    data-q-id="{{ q.id }}"
+                                    data-idx="{{ forloop.counter0 }}"
+                                    {% if q.saved_answer == 'option2' %}checked{% endif %}
+                                >
+                                <div class="option-box">
+                                    <div class="option-badge">B</div>
+                                    <span>{{ q.option2 }}</span>
+                                </div>
+                            </div>
+                            <div class="option-wrapper">
+                                <input 
+                                    type="radio" 
+                                    name="answer-q-{{ q.id }}" 
+                                    value="option3" 
+                                    class="option-input" 
+                                    data-q-id="{{ q.id }}"
+                                    data-idx="{{ forloop.counter0 }}"
+                                    {% if q.saved_answer == 'option3' %}checked{% endif %}
+                                >
+                                <div class="option-box">
+                                    <div class="option-badge">C</div>
+                                    <span>{{ q.option3 }}</span>
+                                </div>
+                            </div>
+                            <div class="option-wrapper">
+                                <input 
+                                    type="radio" 
+                                    name="answer-q-{{ q.id }}" 
+                                    value="option4" 
+                                    class="option-input" 
+                                    data-q-id="{{ q.id }}"
+                                    data-idx="{{ forloop.counter0 }}"
+                                    {% if q.saved_answer == 'option4' %}checked{% endif %}
+                                >
+                                <div class="option-box">
+                                    <div class="option-badge">D</div>
+                                    <span>{{ q.option4 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="navigation-buttons">
+                            <button class="btn-secondary prev-btn" data-idx="{{ forloop.counter0 }}">
+                                ⬅️ Previous
+                            </button>
+                            
+                            {% if forloop.last %}
+                                <button class="btn-primary submit-trigger-btn" style="background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);">
+                                    Finish & Submit Exam 🚀
+                                </button>
+                            {% else %}
+                                <button class="btn-primary next-btn" data-idx="{{ forloop.counter0 }}">
+                                    Save & Next ➡️
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="exam-sidebar">
+                <div class="glass-panel timer-box timer-running" id="timer-display-box">
+                    <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">⏳ REMAINING TIME</span>
+                    <span id="countdown-timer" style="letter-spacing: 0.05em;">00:00:00</span>
+                </div>
+                
+                <div class="glass-panel webcam-panel">
+                    <video id="webcam-preview" class="webcam-stream" autoplay playsinline muted></video>
+                    <div class="proctor-overlay">
+                        <span class="proctor-dot"></span>
+                        <span style="font-weight: 600;">LIVE FEED ACTIVE</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel palette-panel">
+                    <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">Assessment Palette</h3>
+                    <div class="palette-grid">
+                        {% for q in questions %}
+                            <button 
+                                id="palette-btn-{{ forloop.counter0 }}" 
+                                class="palette-btn {% if q.saved_answer %}answered{% else %}unvisited{% endif %}"
+                                onclick="jumpToQuestion({{ forloop.counter0 }})"
+                            >
+                                {{ q.number }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="palette-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: var(--color-secondary);"></span>
+                            <span>Current</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: var(--color-success);"></span>
+                            <span>Answered</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: var(--color-warning);"></span>
+                            <span>Pending</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: rgba(255,255,255,0.05);"></span>
+                            <span>Unvisited</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-secondary submit-trigger-btn" style="width: 100%; margin-top: 24px; padding: 10px; border-color: rgba(239, 68, 68, 0.2); color: #fca5a5;">
+                        Submit Examination
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- 4. SUBMIT CONFIRMATION -->
+<div id="submit-confirm-modal" class="fullscreen-alert" style="display: none; background: rgba(15, 23, 42, 0.9);">
+    <div class="glass-panel alert-card" style="max-width: 500px;">
+        <span style="font-size: 52px; display: inline-block; margin-bottom: 16px;">🚀</span>
+        <h2>Finalize Exam Submission?</h2>
+        <p style="color: var(--text-secondary); font-size: 15px; margin: 16px 0 24px;">
+            Are you sure you want to end your secure exam session? You cannot access the exam page after submission.
+        </p>
+        <div style="display: flex; gap: 14px; justify-content: center;">
+            <button id="cancel-submit-btn" class="btn-secondary">Resume Exam</button>
+            <button id="confirm-submit-btn" class="btn-primary" style="background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);">
+                Yes, Submit Now
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentIdx = 0;
+    const totalQuestions = parseInt("{{ questions|length }}");
+    let secondsLeft = parseInt("{{ time_left }}");
+    let warningsCount = 0;
+    let proctorCheckEnabled = false;
+    let webcamStream = null;
+    
+    const consentModal = document.getElementById('consent-modal');
+    const warningModal = document.getElementById('warning-modal');
+    const examDashboard = document.getElementById('exam-dashboard');
+    const submitModal = document.getElementById('submit-confirm-modal');
+    
+    const startExamBtn = document.getElementById('start-exam-btn');
+    const resumeExamBtn = document.getElementById('resume-exam-btn');
+    const submitTriggerBtns = document.querySelectorAll('.submit-trigger-btn');
+    const cancelSubmitBtn = document.getElementById('cancel-submit-btn');
+    const confirmSubmitBtn = document.getElementById('confirm-submit-btn');
+    
+    const timerDisplayBox = document.getElementById('timer-display-box');
+    const countdownTimer = document.getElementById('countdown-timer');
+    const webcamPreview = document.getElementById('webcam-preview');
+    const violationsCountLabel = document.getElementById('violations-count');
+    
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+    
+    async function startWebcam() {
+        try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 320, height: 240, frameRate: 15 } 
+            });
+            webcamPreview.srcObject = webcamStream;
+        } catch (err) {
+            console.warn("Camera access blocked: ", err);
+        }
+    }
+    
+    function stopWebcam() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+        }
+    }
+    
+    function requestFullscreenLock() {
+        const docElm = document.documentElement;
+        if (docElm.requestFullscreen) docElm.requestFullscreen();
+        else if (docElm.mozRequestFullScreen) docElm.mozRequestFullScreen();
+        else if (docElm.webkitRequestFullScreen) docElm.webkitRequestFullScreen();
+        else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
+    }
+    
+    startExamBtn.addEventListener('click', async () => {
+        consentModal.style.display = 'none';
+        examDashboard.style.display = 'block';
+        
+        requestFullscreenLock();
+        await startWebcam();
+        
+        showQuestion(0);
+        startTimer();
+        
+        setTimeout(() => {
+            proctorCheckEnabled = true;
+        }, 1500);
+    });
+    
+    function showQuestion(idx) {
+        if (idx < 0 || idx >= totalQuestions) return;
+        
+        for (let i = 0; i < totalQuestions; i++) {
+            const card = document.getElementById(`q-card-${i}`);
+            if (card) card.style.display = 'none';
+            
+            const btn = document.getElementById(`palette-btn-${i}`);
+            if (btn && btn.classList.contains('current')) {
+                btn.classList.remove('current');
+                updatePaletteButtonState(i);
+            }
+        }
+        
+        const activeCard = document.getElementById(`q-card-${idx}`);
+        if (activeCard) activeCard.style.display = 'flex';
+        
+        const activeBtn = document.getElementById(`palette-btn-${idx}`);
+        if (activeBtn) {
+            activeBtn.className = 'palette-btn current';
+        }
+        
+        currentIdx = idx;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function jumpToQuestion(idx) {
+        showQuestion(idx);
+    }
+    
+    function updatePaletteButtonState(idx) {
+        const btn = document.getElementById(`palette-btn-${idx}`);
+        if (!btn || btn.classList.contains('current')) return;
+        
+        const card = document.getElementById(`q-card-${idx}`);
+        if (card) {
+            const checkedRadio = card.querySelector('.option-input:checked');
+            if (checkedRadio) {
+                btn.className = 'palette-btn answered';
+            } else {
+                btn.className = 'palette-btn pending';
+            }
+        }
+    }
+    
+    document.querySelectorAll('.prev-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentIdx > 0) {
+                updatePaletteButtonState(currentIdx);
+                showQuestion(currentIdx - 1);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.next-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentIdx < totalQuestions - 1) {
+                showQuestion(currentIdx + 1);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.option-input').forEach(radio => {
+        radio.addEventListener('change', async (e) => {
+            const qId = e.target.getAttribute('data-q-id');
+            const selectedVal = e.target.value;
+            const idx = parseInt(e.target.getAttribute('data-idx'));
+            
+            const btn = document.getElementById(`palette-btn-${idx}`);
+            if (btn) {
+                btn.className = 'palette-btn answered';
+            }
+            
+            try {
+                const response = await fetch('/api/save-answer/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        question_id: qId,
+                        selected_answer: selectedVal
+                    })
+                });
+                
+                const resData = await response.json();
+                if (resData.status !== 'success') {
+                    console.error("Autosave failed:", resData.message);
+                }
+            } catch (err) {
+                console.error("Sync error:", err);
+            }
+        });
+    });
+    
+    function startTimer() {
+        const timerInterval = setInterval(() => {
+            if (secondsLeft <= 0) {
+                clearInterval(timerInterval);
+                autoSubmitExam();
+                return;
+            }
+            
+            secondsLeft--;
+            
+            const h = Math.floor(secondsLeft / 3600);
+            const m = Math.floor((secondsLeft % 3600) / 60);
+            const s = secondsLeft % 60;
+            
+            const displayH = h < 10 ? '0' + h : h;
+            const displayM = m < 10 ? '0' + m : m;
+            const displayS = s < 10 ? '0' + s : s;
+            
+            countdownTimer.textContent = `${displayH}:${displayM}:${displayS}`;
+            
+            if (secondsLeft < 300) {
+                timerDisplayBox.className = 'glass-panel timer-box timer-warning';
+            }
+        }, 1000);
+    }
+    
+    submitTriggerBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            submitModal.style.display = 'flex';
+        });
+    });
+    
+    cancelSubmitBtn.addEventListener('click', () => {
+        submitModal.style.display = 'none';
+        requestFullscreenLock();
+    });
+    
+    async function executeFinalSubmission() {
+        stopWebcam();
+        try {
+            const response = await fetch('/api/submit-exam/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+            const resData = await response.json();
+            if (resData.status === 'success') {
+                window.location.href = resData.redirect_url;
+            } else {
+                alert("Submission failed: " + resData.message);
+            }
+        } catch (err) {
+            console.error("Error during submit:", err);
+            window.location.href = "/result/";
+        }
+    }
+    
+    confirmSubmitBtn.addEventListener('click', async () => {
+        submitModal.style.display = 'none';
+        proctorCheckEnabled = false;
+        await executeFinalSubmission();
+    });
+    
+    async function autoSubmitExam() {
+        proctorCheckEnabled = false;
+        countdownTimer.textContent = "00:00:00";
+        alert("Your 60-minute duration has expired! Your exam will be submitted automatically.");
+        await executeFinalSubmission();
+    }
+    
+    function triggerProctorViolation() {
+        if (!proctorCheckEnabled) return;
+        
+        warningsCount++;
+        violationsCountLabel.textContent = `${warningsCount} / 3 Warnings`;
+        warningModal.style.display = 'flex';
+        
+        if (warningsCount >= 3) {
+            warningModal.style.display = 'none';
+            proctorCheckEnabled = false;
+            alert("Maximum proctoring alerts exceeded! Your assessment has been locked and submitted automatically.");
+            executeFinalSubmission();
+        }
+    }
+    
+    resumeExamBtn.addEventListener('click', () => {
+        warningModal.style.display = 'none';
+        requestFullscreenLock();
+    });
+    
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && proctorCheckEnabled) {
+            triggerProctorViolation();
+        }
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+        if (!document.webkitFullscreenElement && proctorCheckEnabled) {
+            triggerProctorViolation();
+        }
+    });
+    
+    window.addEventListener('blur', () => {
+        if (proctorCheckEnabled) {
+            triggerProctorViolation();
+        }
+    });
+    
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && proctorCheckEnabled) {
+            triggerProctorViolation();
+        }
+    });
+</script>
+{% endblock %}

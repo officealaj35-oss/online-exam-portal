@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Assessment Result | Samyak{% endblock %}
+
+{% block content %}
+{% if passed %}
+<canvas id="confetti-canvas" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:99;"></canvas>
+{% endif %}
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 60px 20px; width: 100%; flex-grow:1; display:flex; flex-direction:column; justify-content:center;">
+    <div class="glass-panel result-container" style="position: relative; overflow: hidden;">
+        {% if passed %}
+            <div style="position: absolute; top: -80px; right: -80px; width: 250px; height: 250px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; filter: blur(50px); pointer-events: none; z-index: 1;"></div>
+        {% else %}
+            <div style="position: absolute; top: -80px; right: -80px; width: 250px; height: 250px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; filter: blur(50px); pointer-events: none; z-index: 1;"></div>
+        {% endif %}
+
+        <div style="position: relative; z-index: 2;">
+            {% if passed %}
+                <span class="result-badge badge-pass">🎉 Pass Status: Successful</span>
+                <h1 style="font-size: 32px; margin-bottom: 8px;">Congratulations, {{ username }}!</h1>
+                <p style="color: var(--text-secondary); font-size: 15px; margin-bottom: 30px;">
+                    You have successfully passed the Samyak online assessment certification.
+                </p>
+            {% else %}
+                <span class="result-badge badge-fail">❌ Pass Status: Unsuccessful</span>
+                <h1 style="font-size: 32px; margin-bottom: 8px;">Keep Learning, {{ username }}!</h1>
+                <p style="color: var(--text-secondary); font-size: 15px; margin-bottom: 30px;">
+                    You did not reach the passing threshold (50.00%) for this assessment.
+                </p>
+            {% endif %}
+
+            <div class="score-radial">
+                <svg>
+                    <circle class="bg-circle" cx="100" cy="100" r="80"></circle>
+                    <circle 
+                        id="result-progress" 
+                        class="progress-circle" 
+                        cx="100" 
+                        cy="100" 
+                        r="80" 
+                        stroke="{% if passed %}var(--color-success){% else %}var(--color-danger){% endif %}"
+                        stroke-dasharray="502.4"
+                        stroke-dashoffset="502.4"
+                        style="filter: drop-shadow(0 0 8px {% if passed %}rgba(16,185,129,0.4){% else %}rgba(239,68,68,0.4){% endif %});"
+                    ></circle>
+                </svg>
+                <div class="score-value">
+                    <h2 id="percentage-label">0%</h2>
+                    <p>TOTAL SCORE</p>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h4>Correct Answers</h4>
+                    <p style="color: var(--color-success);">{{ result.score }} / {{ result.total_questions }}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Final Percentage</h4>
+                    <p style="color: var(--color-secondary);">{{ result.percentage }}%</p>
+                </div>
+            </div>
+            
+            <div class="glass-panel" style="padding: 20px; background: rgba(255,255,255,0.01); border-color: var(--glass-border); margin-bottom: 30px; text-align: left;">
+                <h4 style="font-size: 14px; margin-bottom: 8px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Assessment Info
+                </h4>
+                <ul style="list-style: none; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+                    <li style="display:flex; justify-content:space-between;">
+                        <span>Exam Center:</span>
+                        <strong style="color:var(--text-primary);">Samyak Computer Classes</strong>
+                    </li>
+                    <li style="display:flex; justify-content:space-between;">
+                        <span>Proctor Verification:</span>
+                        <strong style="color:var(--color-success);">Verified (Webcam Logs Saved)</strong>
+                    </li>
+                    <li style="display:flex; justify-content:space-between;">
+                        <span>Submission Time:</span>
+                        <strong style="color:var(--text-primary);">{{ result.submitted_at|date:"Y-m-d H:i:s" }} UTC</strong>
+                    </li>
+                </ul>
+            </div>
+
+            <div style="display: flex; gap: 14px; justify-content: center;">
+                <a href="{% url 'home' %}" class="btn-secondary">Return to Portal</a>
+                {% if passed %}
+                    <button onclick="window.print()" class="btn-primary">
+                        🖨️ Print Certificate
+                    </button>
+                {% else %}
+                    <a href="mailto:support@samyakclasses.in?subject=Exam Re-evaluation Request" class="btn-primary">
+                        📧 Contact Instructor
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const percentage = parseFloat("{{ result.percentage }}");
+        const progressCircle = document.getElementById('result-progress');
+        const percentageLabel = document.getElementById('percentage-label');
+        
+        const circumference = 502.4;
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        setTimeout(() => {
+            progressCircle.style.strokeDashoffset = offset;
+        }, 300);
+        
+        let count = 0;
+        const speed = 20; 
+        const increment = Math.max(1, Math.floor(percentage / 30));
+        
+        const countInterval = setInterval(() => {
+            if (count >= percentage) {
+                percentageLabel.textContent = `${percentage}%`;
+                clearInterval(countInterval);
+            } else {
+                count += increment;
+                if (count > percentage) count = percentage;
+                percentageLabel.textContent = `${count.toFixed(0)}%`;
+            }
+        }, speed);
+        
+        {% if passed %}
+            initConfetti();
+        {% endif %}
+    });
+    
+    function initConfetti() {
+        const canvas = document.getElementById('confetti-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+           
+        const colors = ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+        const particles = [];
+        
+        for (let i = 0; i < 120; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height - height,
+                r: Math.random() * 6 + 4,
+                d: Math.random() * height,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                tilt: Math.random() * 10 - 5,
+                tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+                tiltAngle: 0
+            });
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach((p, idx) => {
+                p.tiltAngle += p.tiltAngleIncremental;
+                p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+                p.x += Math.sin(p.tiltAngle);
+                p.tilt = Math.sin(p.tiltAngle - idx / 3) * 15;
+                
+                ctx.beginPath();
+                ctx.lineWidth = p.r;
+                ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+                ctx.stroke();
+                
+                if (p.y > height) {
+                    particles[idx] = {
+                        x: Math.random() * width,
+                        y: -20,
+                        r: p.r,
+                        d: p.d,
+                        color: p.color,
+                        tilt: p.tilt,
+                        tiltAngleIncremental: p.tiltAngleIncremental,
+                        tiltAngle: p.tiltAngle
+                    };
+                }
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
+</script>
+{% endblock %}
